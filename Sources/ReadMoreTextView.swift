@@ -168,6 +168,8 @@ public class ReadMoreTextView: UITextView {
      Use `onSizeChange` to adjust layout on that event.
      */
     public var readLessTextPadding: UIEdgeInsets
+
+    public var showAttachmentsWhenTrimming: Bool = true
     
     public override var text: String! {
         didSet {
@@ -250,6 +252,11 @@ public class ReadMoreTextView: UITextView {
             return _originalAttributedText?.string.length ?? 0
         }
     }
+    private var _noAttachmentsAttributedText: NSAttributedString! {
+        let result = NSMutableAttributedString(attributedString: _originalAttributedText)
+        result.removeAttachments()
+        return result.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
     
     private func attributedStringWithDefaultAttributes(from text: String) -> NSAttributedString {
         return NSAttributedString(string: text, attributes: [
@@ -271,11 +278,29 @@ public class ReadMoreTextView: UITextView {
         layoutManager.invalidateLayout(forCharacterRange: layoutManager.characterRangeThatFits(textContainer: textContainer), actualCharacterRange: nil)
         textContainer.size = CGSize(width: bounds.size.width, height: CGFloat.greatestFiniteMagnitude)
 
-        if let text = attributedReadMoreText {
-            let range = rangeToReplaceWithReadMoreText()
-            guard range.location != NSNotFound else { return }
+        if let readMoreText = attributedReadMoreText {
+            let originalTextRange = rangeToReplaceWithReadMoreText()
+            guard originalTextRange.location != NSNotFound else { return }
 
-            textStorage.replaceCharacters(in: range, with: text)
+            if !showAttachmentsWhenTrimming {
+                let newAttributedText: NSAttributedString! = _noAttachmentsAttributedText
+                let rawText = newAttributedText.string
+                  .trimmingCharacters(in: .whitespacesAndNewlines)
+                if rawText.count <= 0 { return }
+
+                textStorage.replaceCharacters(in: NSRange(location: 0, length: text.length),
+                                              with: newAttributedText)
+                let range = rangeToReplaceWithReadMoreText()
+
+                if range.location == NSNotFound {
+                  textStorage.replaceCharacters(in: NSRange(location: 0, length: text.length),
+                                                with: _originalAttributedText)
+                } else {
+                  textStorage.replaceCharacters(in: range, with: readMoreText)
+                }
+            } else {
+                textStorage.replaceCharacters(in: originalTextRange, with: readMoreText)
+            }
         }
         
         invalidateIntrinsicContentSize()
@@ -383,5 +408,33 @@ public class ReadMoreTextView: UITextView {
 extension String {
     var length: Int {
         return utf16.count
+    }
+}
+
+extension NSAttributedString {
+    func trimmingCharacters(in characters: CharacterSet) -> NSAttributedString {
+        let invertedSet = characters.inverted
+        let startRange = string.rangeOfCharacter(from: invertedSet)
+        let endRange = string.rangeOfCharacter(from: invertedSet, options: .backwards)
+        guard let startLocation = startRange?.upperBound, let endLocation = endRange?.lowerBound else {
+            return self
+        }
+
+        let location = string.utf16.distance(from: string.startIndex, to: startLocation) - 1
+        let length = string.utf16.distance(from: startLocation, to: endLocation) + 2
+        let range = NSRange(location: location, length: length)
+
+        return attributedSubstring(from: range)
+    }
+}
+
+extension NSMutableAttributedString {
+    func removeAttachments() {
+        let fullRange = NSRange(location: 0, length: length)
+        enumerateAttribute(.attachment, in: fullRange, options: []) { (value, range, _) in
+            if let value = value, value is NSTextAttachment {
+                replaceCharacters(in: range, with: "")
+            }
+        }
     }
 }
