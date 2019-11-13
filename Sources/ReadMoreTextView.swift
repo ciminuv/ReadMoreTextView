@@ -331,13 +331,17 @@ public class ReadMoreTextView: UITextView {
     
     private func characterIndexBeforeTrim(range rangeThatFits: NSRange) -> Int {
         if let text = attributedReadMoreText {
-            let readMoreBoundingRect = attributedReadMoreText(text: text, boundingRectThatFits: textContainer.size)
-            let lastCharacterRect = layoutManager.boundingRectForCharacterRange(range: NSMakeRange(NSMaxRange(rangeThatFits)-1, 1), inTextContainer: textContainer)
-            var point = lastCharacterRect.origin
-            point.x = textContainer.size.width - ceil(readMoreBoundingRect.size.width)
-            let glyphIndex = layoutManager.glyphIndex(for: point, in: textContainer, fractionOfDistanceThroughGlyph: nil)
-            let characterIndex = layoutManager.characterIndexForGlyph(at: glyphIndex)
-            return characterIndex - 1
+            if attributedText.string.hasSuffix(text.string) {
+                return NSMaxRange(rangeThatFits) - text.length
+            } else {
+                let readMoreBoundingRect = attributedReadMoreText(text: text, boundingRectThatFits: textContainer.size)
+                let lastCharacterRect = layoutManager.boundingRectForCharacterRange(range: NSMakeRange(NSMaxRange(rangeThatFits)-1, 1), inTextContainer: textContainer)
+                var point = lastCharacterRect.origin
+                point.x = textContainer.size.width - ceil(readMoreBoundingRect.size.width)
+                let glyphIndex = layoutManager.glyphIndex(for: point, in: textContainer, fractionOfDistanceThroughGlyph: nil)
+                let characterIndex = layoutManager.characterIndexForGlyph(at: glyphIndex)
+                return characterIndex - 1
+            }
         } else {
             return NSMaxRange(rangeThatFits) - readMoreText!.length
         }
