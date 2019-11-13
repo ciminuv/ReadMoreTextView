@@ -12,9 +12,17 @@ import UIKit
  UITextView subclass that adds "read more"/"read less" capabilities.
  Disables scrolling and editing, so do not set these properties to true.
  */
+
+public protocol ReadMoreTextViewDelegate: class {
+    func textViewReadMoreDidTap(_ textView: ReadMoreTextView)
+    func textViewReadLessDidTap(_ textView: ReadMoreTextView)
+}
+
 @IBDesignable
 public class ReadMoreTextView: UITextView {
-    
+
+    public weak var readMoreDelegate: ReadMoreTextViewDelegate?
+
     public override init(frame: CGRect, textContainer: NSTextContainer?) {
         readMoreTextPadding = .zero
         readLessTextPadding = .zero
@@ -219,7 +227,15 @@ public class ReadMoreTextView: UITextView {
     
     public override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
         if let point = touches.first?.location(in: self) {
+            let originalState = shouldTrim
             shouldTrim = pointIsInReadMoreOrReadLessTextRange(point: point) ?? shouldTrim
+            if originalState != shouldTrim {
+                if shouldTrim {
+                    readMoreDelegate?.textViewReadLessDidTap(self)
+                } else {
+                    readMoreDelegate?.textViewReadMoreDidTap(self)
+                }
+            }
         }
         super.touchesEnded(touches, with: event)
     }
