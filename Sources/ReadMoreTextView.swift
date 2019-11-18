@@ -162,7 +162,8 @@ public class ReadMoreTextView: UITextView {
     public var readLessTextPadding: UIEdgeInsets
 
     public var showAttachmentsWhenTrimming: Bool = true
-    
+    public var textInteractionEnabled: Bool = true
+
     public override var text: String! {
         didSet {
             if let text = text {
@@ -214,8 +215,10 @@ public class ReadMoreTextView: UITextView {
     
     public override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
         return hitTest(pointInGliphRange: point, event: event) { _ in
-            guard pointIsInReadMoreOrReadLessTextRange(point: point) != nil else { return nil }
-            return self
+            if textInteractionEnabled || pointIsInReadMoreOrReadLessTextRange(point: point) != nil {
+              return self
+            }
+            return nil
         }
     }
     
