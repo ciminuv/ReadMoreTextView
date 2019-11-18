@@ -163,6 +163,7 @@ public class ReadMoreTextView: UITextView {
 
     public var showAttachmentsWhenTrimming: Bool = true
     public var textInteractionEnabled: Bool = true
+    public var readMoreOrReadLessInteractionEnabled: Bool = true
 
     public override var text: String! {
         didSet {
@@ -223,7 +224,7 @@ public class ReadMoreTextView: UITextView {
     }
     
     public override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
-        if let point = touches.first?.location(in: self) {
+        if let point = touches.first?.location(in: self), readMoreOrReadLessInteractionEnabled {
             shouldTrim = pointIsInReadMoreOrReadLessTextRange(point: point) ?? shouldTrim
         }
         super.touchesEnded(touches, with: event)
