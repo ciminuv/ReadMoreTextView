@@ -272,19 +272,20 @@ public class ReadMoreTextView: UITextView {
 
             if !showAttachmentsWhenTrimming {
                 let newAttributedText: NSAttributedString! = _noAttachmentsAttributedText
-                let rawText = newAttributedText.string
-                  .trimmingCharacters(in: .whitespacesAndNewlines)
-                if rawText.count <= 0 { return }
+                let rawText = newAttributedText.string.trimmingCharacters(in: .whitespacesAndNewlines)
 
-                textStorage.replaceCharacters(in: NSRange(location: 0, length: text.length),
-                                              with: newAttributedText)
-                let range = rangeToReplaceWithReadMoreText()
-
-                if range.location == NSNotFound {
-                  textStorage.replaceCharacters(in: NSRange(location: 0, length: text.length),
-                                                with: _originalAttributedText)
+                if rawText.count <= 0 {
+                    showFullOriginalText()
                 } else {
-                  textStorage.replaceCharacters(in: range, with: readMoreText)
+                    textStorage.replaceCharacters(in: NSRange(location: 0, length: text.length),
+                                                  with: newAttributedText)
+                    let range = rangeToReplaceWithReadMoreText()
+
+                    if range.location == NSNotFound {
+                        showFullOriginalText()
+                    } else {
+                        textStorage.replaceCharacters(in: range, with: readMoreText)
+                    }
                 }
             } else {
                 textStorage.replaceCharacters(in: originalTextRange, with: readMoreText)
@@ -312,6 +313,16 @@ public class ReadMoreTextView: UITextView {
         
         invalidateIntrinsicContentSize()
         invokeOnSizeChangeIfNeeded()
+    }
+
+    private func showFullOriginalText() {
+        if attributedText != _originalAttributedText {
+            textStorage.replaceCharacters(in: NSRange(location: 0, length: text.length),
+                                          with: _originalAttributedText)
+        }
+        textContainer.maximumNumberOfLines = 0
+        layoutManager.invalidateLayout(forCharacterRange: layoutManager.characterRangeThatFits(textContainer: textContainer), actualCharacterRange: nil)
+        textContainer.size = CGSize(width: bounds.size.width, height: CGFloat.greatestFiniteMagnitude)
     }
     
     private func invokeOnSizeChangeIfNeeded() {
