@@ -417,10 +417,10 @@ extension String {
 extension NSAttributedString {
     func trimmingCharacters(in characters: CharacterSet) -> NSAttributedString {
         let invertedSet = characters.inverted
-        let startRange = string.rangeOfCharacter(from: invertedSet)
-        let endRange = string.rangeOfCharacter(from: invertedSet, options: .backwards)
+        let startRange = string.utf16.description.rangeOfCharacter(from: invertedSet)
+        let endRange = string.utf16.description.rangeOfCharacter(from: invertedSet, options: .backwards)
         guard let startLocation = startRange?.upperBound, let endLocation = endRange?.lowerBound else {
-            return self
+            return .init(string: string.trimmingCharacters(in: characters))
         }
 
         let location = string.utf16.distance(from: string.startIndex, to: startLocation) - 1
