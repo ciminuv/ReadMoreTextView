@@ -234,16 +234,21 @@ public class ReadMoreTextView: UITextView {
     
     private var _needsUpdateTrim = false
     private var _originalMaximumNumberOfLines: Int = 0
-    private var _originalAttributedText: NSAttributedString!
+    private var _noAttachmentsAttributedText: NSAttributedString!
+    private var _originalAttributedText: NSAttributedString! {
+        didSet {
+            if oldValue == _originalAttributedText { return }
+            _noAttachmentsAttributedText = _originalAttributedText
+            guard let newAttributedText = _originalAttributedText else { return }
+            let result = NSMutableAttributedString(attributedString: newAttributedText)
+            result.removeAttachments()
+            _noAttachmentsAttributedText = result.trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+    }
     private var _originalTextLength: Int {
         get {
             return _originalAttributedText?.string.length ?? 0
         }
-    }
-    private var _noAttachmentsAttributedText: NSAttributedString! {
-        let result = NSMutableAttributedString(attributedString: _originalAttributedText)
-        result.removeAttachments()
-        return result.trimmingCharacters(in: .whitespacesAndNewlines)
     }
     
     private func attributedStringWithDefaultAttributes(from text: String) -> NSAttributedString {
@@ -271,14 +276,13 @@ public class ReadMoreTextView: UITextView {
             guard originalTextRange.location != NSNotFound else { return }
 
             if !showAttachmentsWhenTrimming {
-                let newAttributedText: NSAttributedString! = _noAttachmentsAttributedText
-                let rawText = newAttributedText.string.trimmingCharacters(in: .whitespacesAndNewlines)
+                let rawText = _noAttachmentsAttributedText.string.trimmingCharacters(in: .whitespacesAndNewlines)
 
                 if rawText.count <= 0 {
                     showFullOriginalText()
                 } else {
                     textStorage.replaceCharacters(in: NSRange(location: 0, length: text.length),
-                                                  with: newAttributedText)
+                                                  with: _noAttachmentsAttributedText)
                     let range = rangeToReplaceWithReadMoreText()
 
                     if range.location == NSNotFound {
