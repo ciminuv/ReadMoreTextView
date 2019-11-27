@@ -216,16 +216,18 @@ public class ReadMoreTextView: UITextView {
     
     public override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
         return hitTest(pointInGliphRange: point, event: event) { _ in
-            if textInteractionEnabled || pointIsInReadMoreOrReadLessTextRange(point: point) != nil {
-              return self
-            }
+            if textInteractionEnabled { return self }
+            if readMoreOrReadLessInteractionEnabled &&
+                pointIsInReadMoreOrReadLessTextRange(point: point) { return self }
             return nil
         }
     }
     
     public override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
-        if let point = touches.first?.location(in: self), readMoreOrReadLessInteractionEnabled {
-            shouldTrim = pointIsInReadMoreOrReadLessTextRange(point: point) ?? shouldTrim
+        if let point = touches.first?.location(in: self),
+            pointIsInReadMoreOrReadLessTextRange(point: point),
+            readMoreOrReadLessInteractionEnabled {
+            shouldTrim = !shouldTrim
         }
         super.touchesEnded(touches, with: event)
     }
@@ -267,6 +269,9 @@ public class ReadMoreTextView: UITextView {
         
         shouldTrim = true
         textContainer.maximumNumberOfLines = maximumNumberOfLines
+        if attributedText != _originalAttributedText {
+            attributedText = _originalAttributedText
+        }
         
         layoutManager.invalidateLayout(forCharacterRange: layoutManager.characterRangeThatFits(textContainer: textContainer), actualCharacterRange: nil)
         textContainer.size = CGSize(width: bounds.size.width, height: CGFloat.greatestFiniteMagnitude)
@@ -276,21 +281,14 @@ public class ReadMoreTextView: UITextView {
             guard originalTextRange.location != NSNotFound else { return }
 
             if !showAttachmentsWhenTrimming {
-                let rawText = _noAttachmentsAttributedText.string.trimmingCharacters(in: .whitespacesAndNewlines)
-
-                if rawText.count <= 0 {
-                    showFullOriginalText()
-                } else {
-                    textStorage.replaceCharacters(in: NSRange(location: 0, length: text.length),
-                                                  with: _noAttachmentsAttributedText)
-                    let range = rangeToReplaceWithReadMoreText()
-
-                    if range.location == NSNotFound {
-                        showFullOriginalText()
-                    } else {
-                        textStorage.replaceCharacters(in: range, with: readMoreText)
-                    }
-                }
+              textStorage.replaceCharacters(in: NSRange(location: 0, length: text.length),
+                                            with: _noAttachmentsAttributedText)
+              let range = rangeToReplaceWithReadMoreText()
+              if range.location == NSNotFound {
+                textStorage.append(readMoreText)
+              } else {
+                textStorage.replaceCharacters(in: range, with: readMoreText)
+              }
             } else {
                 textStorage.replaceCharacters(in: originalTextRange, with: readMoreText)
             }
@@ -317,16 +315,6 @@ public class ReadMoreTextView: UITextView {
         
         invalidateIntrinsicContentSize()
         invokeOnSizeChangeIfNeeded()
-    }
-
-    private func showFullOriginalText() {
-        if attributedText != _originalAttributedText {
-            textStorage.replaceCharacters(in: NSRange(location: 0, length: text.length),
-                                          with: _originalAttributedText)
-        }
-        textContainer.maximumNumberOfLines = 0
-        layoutManager.invalidateLayout(forCharacterRange: layoutManager.characterRangeThatFits(textContainer: textContainer), actualCharacterRange: nil)
-        textContainer.size = CGSize(width: bounds.size.width, height: CGFloat.greatestFiniteMagnitude)
     }
     
     private func invokeOnSizeChangeIfNeeded() {
@@ -358,18 +346,14 @@ public class ReadMoreTextView: UITextView {
     }
     
     private func characterIndexBeforeTrim(range rangeThatFits: NSRange) -> Int {
-        if let text = attributedReadMoreText {
-            if attributedText.string.hasSuffix(text.string) {
-                return NSMaxRange(rangeThatFits) - text.length
-            } else {
-                let readMoreBoundingRect = attributedReadMoreText(text: text, boundingRectThatFits: textContainer.size)
-                let lastCharacterRect = layoutManager.boundingRectForCharacterRange(range: NSMakeRange(NSMaxRange(rangeThatFits)-1, 1), inTextContainer: textContainer)
-                var point = lastCharacterRect.origin
-                point.x = textContainer.size.width - ceil(readMoreBoundingRect.size.width)
-                let glyphIndex = layoutManager.glyphIndex(for: point, in: textContainer, fractionOfDistanceThroughGlyph: nil)
-                let characterIndex = layoutManager.characterIndexForGlyph(at: glyphIndex)
-                return characterIndex - 1
-            }
+        if let text = attributedReadMoreText, !attributedText.string.hasSuffix(text.string) {
+            let readMoreBoundingRect = attributedReadMoreText(text: text, boundingRectThatFits: textContainer.size)
+            let lastCharacterRect = layoutManager.boundingRectForCharacterRange(range: NSMakeRange(NSMaxRange(rangeThatFits)-1, 1), inTextContainer: textContainer)
+            var point = lastCharacterRect.origin
+            point.x = textContainer.size.width - ceil(readMoreBoundingRect.size.width)
+            let glyphIndex = layoutManager.glyphIndex(for: point, in: textContainer, fractionOfDistanceThroughGlyph: nil)
+            let characterIndex = layoutManager.characterIndexForGlyph(at: glyphIndex)
+            return characterIndex - 1
         } else {
             return NSMaxRange(rangeThatFits) - readMoreText!.length
         }
@@ -397,13 +381,17 @@ public class ReadMoreTextView: UITextView {
         return NSRange(location: _originalTextLength, length: readLessText!.length + 1)
     }
 
-    private func pointIsInReadMoreOrReadLessTextRange(point aPoint: CGPoint) -> Bool? {
-        if needsTrim() && pointIsInTextRange(point: aPoint, range: readMoreTextRange(), padding: readMoreTextPadding) {
-            return false
-        } else if readLessText != nil && pointIsInTextRange(point: aPoint, range: readLessTextRange(), padding: readLessTextPadding) {
+    private func pointIsInReadMoreOrReadLessTextRange(point aPoint: CGPoint) -> Bool {
+        if needsTrim() && pointIsInTextRange(point: aPoint,
+                                             range: readMoreTextRange(),
+                                             padding: readMoreTextPadding) {
+            return true
+        } else if readLessText != nil && pointIsInTextRange(point: aPoint,
+                                                            range: readLessTextRange(),
+                                                            padding: readLessTextPadding) {
             return true
         }
-        return nil
+        return false
     }
 
 }
