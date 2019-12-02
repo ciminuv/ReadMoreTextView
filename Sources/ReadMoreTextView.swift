@@ -13,7 +13,7 @@ import UIKit
  Disables scrolling and editing, so do not set these properties to true.
  */
 @IBDesignable
-public class ReadMoreTextView: UITextView {
+open class ReadMoreTextView: UITextView {
 
   public override init(frame: CGRect, textContainer: NSTextContainer?) {
     readMoreTextPadding = .zero
