@@ -278,7 +278,11 @@ public class ReadMoreTextView: UITextView {
 
     if let readMoreText = attributedReadMoreText {
       let originalTextRange = rangeToReplaceWithReadMoreText()
-      guard originalTextRange.location != NSNotFound else { return }
+      if originalTextRange.location == NSNotFound {
+        if showAttachmentsWhenTrimming { return }
+        let normalizedOriginalAttributedText = _originalAttributedText.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !showAttachmentsWhenTrimming && normalizedOriginalAttributedText == _noAttachmentsAttributedText { return }
+      }
 
       if !showAttachmentsWhenTrimming {
         textStorage.replaceCharacters(in: NSRange(location: 0, length: text.length),
